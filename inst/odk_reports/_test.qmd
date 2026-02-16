@@ -1,7 +1,6 @@
 ---
 title: "ODK Central data management"
 subtitle: "Overview of the data collection infrastructure"
-projectname: "PROJECTNAME"
 author:
   - name: Hélène Langet
     email: helene.langet@swisstph.ch
@@ -16,71 +15,12 @@ fontsize: 11pt
 execute:
   echo: false
   warning: false
-
-params:
-  svc: null
 ---
-
-<!-- Load libraries -->
-
-```{r}
-library(httr)
-library(dplyr)
-library(flextable)
-library(knitr)
-library(purrr)
-library(rvest)
-```
-
-{{< pagebreak >}}
 
 # Executive summary
 
-This report gives an overview of the **ODK Central system** set up for the **{{< meta projectname >}} project**. ODK Central is the platform used to manage and collect project data.
+This report gives an overview of the **ODK Central system** set up for the . ODK Central is the platform used to manage and collect project data.
 
 ## For project managers and non-technical readers
 
-The report is created directly from the system itself, which means the information you see is always **up to date** at the timestamp it is produced (**{{< meta date >}}**).
-
-## For technical teams and developers
-
-This report was generated automatically using **`r R.version.string`** and **Quarto `r system("quarto --version", intern = TRUE)`** to ensure reproducibility.
-
-`{r} params$svc`
-
-{{< pagebreak >}}
-
-# About ODK
-
-```{r}
-security_url <- "https://docs.getodk.org/security/"
-```
-
-Security information has been directly updated from [`r security_url`](`r security_url`) on **{{< meta date >}}**. Since the servers are self-hosted, items marked with a question mark depend on the specific self-hosted configuration.
-
-```{r}
-#| tbl-cap: "ODK security considerations"
-#| label: tbl-odk-security
-
-rvest::read_html(security_url) |>
-  rvest::html_element("div.table-wrapper.colwidths-given.docutils.container table") |> 
-  rvest::html_table() |>
-  dplyr::select(-`ODK Cloud`) |>
-  knitr::kable(escape = FALSE)
-```
-
-```{r}
-users_url <- "https://docs.getodk.org/central-users/"
-```
-
-ODK Central role information has been directly updated from [`r users_url`](`r users_url`) on **{{< meta date >}}**.
-
-```{r}
-#| tbl-cap: "Web user roles"
-#| label: tbl-odk-webuser-roles
-
-rvest::read_html(users_url) |>
-  rvest::html_element("div.table-wrapper.docutils.container table") |> 
-  rvest::html_table() |>
-  knitr::kable(escape = FALSE)
-```
+The report is created directly from the system itself, which means the information you see is always **up to date** at the timestamp it is produced.
