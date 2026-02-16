@@ -1,0 +1,23 @@
+---
+title: "ODK Central data management"
+subtitle: "Overview of the data collection infrastructure"
+author:
+  - name: Hélène Langet
+    email: helene.langet@swisstph.ch
+date: last-modified
+date-format: "YYYY-MM-DDTHH:mm:ssZ"
+format:
+  docx: default
+      
+execute:
+  echo: false
+  warning: false
+---
+
+# Executive summary
+
+This report gives an overview of the **ODK Central system**.
+
+## For project managers and non-technical readers
+
+The report is created directly from the system itself, which means the information you see is always **up to date** at the timestamp it is produced.
