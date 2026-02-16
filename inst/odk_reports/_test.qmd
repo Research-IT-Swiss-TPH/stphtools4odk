@@ -21,3 +21,5 @@ This report gives an overview of the **ODK Central system**.
 ## For project managers and non-technical readers
 
 The report is created directly from the system itself, which means the information you see is always **up to date** at the timestamp it is produced.
+
+# Section 2
