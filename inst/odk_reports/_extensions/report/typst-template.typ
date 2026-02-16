@@ -67,7 +67,7 @@
   )
 
   // Set the body font
-  set text(11pt, font: "Arial")
+  set text(11pt, font: "DejaVu Sans")
 
   // Links should be Swiss TPH blue
   show link: set text(rgb(70, 138, 178))
