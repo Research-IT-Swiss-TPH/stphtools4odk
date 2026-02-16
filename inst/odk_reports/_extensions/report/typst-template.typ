@@ -13,6 +13,9 @@
 // Swiss TPH colors:
 // https://intranet.swisstph.ch/fileadmin/user_upload/AoC/Communications/Documents/CI-CD_Flyer_2020_FINAL.pdf
 
+#let TPH-icon = "_extensions/report/images/TPHicon.jpeg"
+#let TPH-logo = "_extensions/report/images/TPHlogo4.png"
+
 #let report(
   title: none,
   additional1: none,
@@ -35,8 +38,6 @@
   toc_depth: none,
   toc_indent: 1.5em,
   numbering: none,
-  TPH-icon: none,
-  TPH-logo: none,
   mtop: none,
   mbottom: none,
   mleft: none,

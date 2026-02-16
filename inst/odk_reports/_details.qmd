@@ -9,8 +9,6 @@ date: last-modified
 date-format: "YYYY-MM-DDTHH:mm:ssZ"
 format:
   report-typst: default
-TPH-icon: ./_extensions/report/images/TPHicon.jpeg
-TPH-logo: ./_extensions/report/images/TPHlogo4.png
       
 mainfont: Arial
 fontsize: 11pt
