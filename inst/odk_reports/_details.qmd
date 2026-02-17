@@ -22,8 +22,16 @@ author:
       - name: Swiss Tropical and Public Health Institute (Research Informatics)
 date: last-modified
 date-format: "YYYY-MM-DDTHH:mm:ssZ"
+
+params:
+  base_url: null
+  pid: null
+  project_name: "Default Project"
+
 format:
   report-typst: default
+  
+projectname: "`r params$project_name`"
       
 mainfont: Arial
 fontsize: 11pt
@@ -31,12 +39,6 @@ fontsize: 11pt
 execute:
   echo: false
   warning: false
-
-params:
-  base_url: null
-  pid: null
-  project_name: "Default Project"
-projectname: "`r params$project_name`"
 ---
 
 <!-- Load libraries -->
