@@ -34,7 +34,7 @@ execute:
 
 params:
   base_url: null
-  pid: nul
+  pid: null
   project_name: "Default Project"
 projectname: "`r params$project_name`"
 ---
@@ -54,7 +54,7 @@ library(rvest)
 
 # Executive summary
 
-This report gives an overview of the **ODK Central system** set up for the **{{< meta projectname >}} project**. ODK Central is the platform used to manage and collect project data.
+This report gives an overview of the **ODK Central system** set up for the **`r params$project_name` project**. ODK Central is the platform used to manage and collect project data.
 
 **Who is this report for?** It is mainly intended for project managers and technical staff who oversee or support the data management system.
 
@@ -72,16 +72,16 @@ This report was generated automatically using **`r R.version.string`** and **Qua
 
 ## General
 
-* ODK Central URL: [`{r} params$base_url`](`{r} params$base_url`)
-* Project ID: `{r} params$pid`
+* ODK Central URL: [`r params$base_url`](`r params$base_url`)
+* Project ID: `r params$pid`
 
 ## Overview of forms and entities
 
-This section summarizes the forms and entities currently available in the project with ID `{r} params$pid`.
+This section summarizes the forms and entities currently available in the project with ID `r params$pid`.
 
 ## Access
 
-This section describes the user access configuration for the project with ID `{r} params$pid`.
+This section describes the user access configuration for the project with ID `r params$pid`.
 
 ### Web user project managers
 
