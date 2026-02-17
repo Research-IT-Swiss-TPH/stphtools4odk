@@ -1,10 +1,25 @@
 ---
 title: "ODK Central data management"
 subtitle: "Overview of the data collection infrastructure"
-projectname: "PROJECTNAME"
 author:
-  - name: Hélène Langet
+  - name:
+      given: Hélène
+      family: Langet
     email: helene.langet@swisstph.ch
+    affiliations:
+      - name: Swiss Tropical and Public Health Institute (Research Informatics)
+  - name:
+      given: Zhihan
+      family: Zhu
+    email: zhihan.zhu@swisstph.ch
+    affiliations:
+      - name: Swiss Tropical and Public Health Institute (Research Informatics)
+  - name:
+      given: Aurelio
+      family: Di Pasquale
+    email: aurelio.dipasquale@swisstph.ch
+    affiliations:
+      - name: Swiss Tropical and Public Health Institute (Research Informatics)
 date: last-modified
 date-format: "YYYY-MM-DDTHH:mm:ssZ"
 format:
@@ -18,7 +33,10 @@ execute:
   warning: false
 
 params:
-  svc: null
+  base_url: null
+  pid: nul
+  project_name: "Default Project"
+projectname: "`r params$project_name`"
 ---
 
 <!-- Load libraries -->
@@ -38,6 +56,8 @@ library(rvest)
 
 This report gives an overview of the **ODK Central system** set up for the **{{< meta projectname >}} project**. ODK Central is the platform used to manage and collect project data.
 
+**Who is this report for?** It is mainly intended for project managers and technical staff who oversee or support the data management system.
+
 ## For project managers and non-technical readers
 
 The report is created directly from the system itself, which means the information you see is always **up to date** at the timestamp it is produced (**{{< meta date >}}**).
@@ -46,7 +66,34 @@ The report is created directly from the system itself, which means the informati
 
 This report was generated automatically using **`r R.version.string`** and **Quarto `r system("quarto --version", intern = TRUE)`** to ensure reproducibility.
 
-`{r} params$svc`
+{{< pagebreak >}}
+
+# Server configuration
+
+## General
+
+* ODK Central URL: [`{r} params$base_url`](`{r} params$base_url`)
+* Project ID: `{r} params$pid`
+
+## Overview of forms and entities
+
+This section summarizes the forms and entities currently available in the project with ID `{r} params$pid`.
+
+## Access
+
+This section describes the user access configuration for the project with ID `{r} params$pid`.
+
+### Web user project managers
+
+Project Managers can perform any administrative task related to this Project and can fill Forms out in a web browser
+
+### Web user project viewers
+
+Project Viewers can access and download all Form and Entity data in this Project, but cannot make any changes to settings or data.
+
+### Web user data collectors
+
+Data Collectors can fill Forms out in a web browser, but cannot view or change data or settings.
 
 {{< pagebreak >}}
 
