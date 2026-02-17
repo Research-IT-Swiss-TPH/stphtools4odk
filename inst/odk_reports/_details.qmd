@@ -38,7 +38,7 @@ execute:
   echo: false
   warning: false
   
-projectname: "test"
+projectname: "`r params$project_name`"
 ---
 
 <!-- Load libraries -->
