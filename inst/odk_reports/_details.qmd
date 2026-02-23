@@ -54,6 +54,7 @@ library(flextable)
 library(knitr)
 library(purrr)
 library(rvest)
+library(gt)
 ```
 
 {{< pagebreak >}}
