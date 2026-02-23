@@ -27,6 +27,8 @@ params:
   base_url: null
   pid: null
   project_name: "Default Project"
+  form_list: null
+  entity_list: null
 
 format:
   report-typst:
@@ -82,14 +84,6 @@ This report was generated automatically using **`r R.version.string`** and **Qua
 * ODK Central URL: [`r params$base_url`](`r params$base_url`)
 * Project ID: `r params$pid`
 
-```{r}
-ruODK::ru_setup(
-  svc = Sys.getenv("ODKC_SVC"),
-  un = Sys.getenv("ODKC_UN"),
-  pw = Sys.getenv("ODKC_PW"),
-  tz = Sys.getenv("TZ"))
-```
-
 ## Overview of forms and entities
 
 This section summarizes the forms and entities currently available in the project with ID `r params$pid`.
@@ -98,7 +92,7 @@ This section summarizes the forms and entities currently available in the projec
 #| label: tbl-forms
 #| tbl-cap: "List of forms"
 
-ruODK::form_list() |>
+params$form_list |>
   dplyr::select(xml_form_id,
                 name,
                 state,
@@ -111,7 +105,7 @@ ruODK::form_list() |>
 #| label: tbl-entities
 #| tbl-cap: "List of entities."
 
-ruODK::entitylist_list() |>
+params$entity_list() |>
   dplyr::select(-created_at,
                 -project_id) |> 
   gt::gt()
