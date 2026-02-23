@@ -29,7 +29,11 @@ params:
   project_name: "Default Project"
 
 format:
-  report-typst: default
+  report-typst:
+    toc-title: "Table of Contents"
+    toc: true
+    toc-depth: 3
+    number-sections: true
       
 mainfont: Arial
 fontsize: 11pt
@@ -85,14 +89,32 @@ ruODK::ru_setup(
   tz = Sys.getenv("TZ"))
 ```
 
-```{r}
-ruODK::project_detail() |> 
-  knitr::kable()
-```
-
 ## Overview of forms and entities
 
 This section summarizes the forms and entities currently available in the project with ID `r params$pid`.
+
+```{r}
+#| label: tbl-forms
+#| tbl-cap: "List of forms"
+
+ruODK::form_list() |>
+  dplyr::select(xml_form_id,
+                name,
+                state,
+                version,
+                submissions) |> 
+  gt::gt()
+```
+
+```{r}
+#| label: tbl-entities
+#| tbl-cap: "List of entities."
+
+ruODK::entitylist_list() |>
+  dplyr::select(-created_at,
+                -project_id) |> 
+  gt::gt()
+```
 
 ## Access
 
