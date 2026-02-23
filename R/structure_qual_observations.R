@@ -71,13 +71,13 @@
 #' @examples
 #' \dontrun{
 #' # Standard export
-#' export_odk_qualitative(
+#' structure_qual_observations(
 #'   indir = "exports/my_odk_form/",
 #'   outdir = "qualitative_output/"
 #' )
 #'
 #' # Export with subfolders based on a column
-#' export_odk_qualitative(
+#' structure_qual_observations(
 #'   indir = "exports/my_odk_form/",
 #'   outdir = "qualitative_output/",
 #'   sorting_col = "enumerator_id"
@@ -85,7 +85,7 @@
 #' }
 #'
 #' @export
-export_odk_qualitative <- function(
+structure_qual_observations <- function(
     indir,
     outdir,
     prefix = "obs",
@@ -288,11 +288,3 @@ export_odk_qualitative <- function(
 
   invisible(NULL)
 }
-
-# qual_obs_se <- ruODK::submission_export(fid = "xxx",
-#                                         local_dir = tempdir(),
-#                                         overwrite = TRUE,
-#                                         media = TRUE,
-#                                         repeats = TRUE,
-#                                         deleted_fields = TRUE)
-# unzip(qual_obs_se, exdir = qual_obsdir)
