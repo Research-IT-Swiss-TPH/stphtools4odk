@@ -77,6 +77,19 @@ This report was generated automatically using **`r R.version.string`** and **Qua
 * ODK Central URL: [`r params$base_url`](`r params$base_url`)
 * Project ID: `r params$pid`
 
+```{r}
+ruODK::ru_setup(
+  svc = Sys.getenv("ODKC_SVC"),
+  un = Sys.getenv("ODKC_UN"),
+  pw = Sys.getenv("ODKC_PW"),
+  tz = Sys.getenv("TZ"))
+```
+
+```{r}
+ruODK::project_detail() |> 
+  knitr::kable()
+```
+
 ## Overview of forms and entities
 
 This section summarizes the forms and entities currently available in the project with ID `r params$pid`.
