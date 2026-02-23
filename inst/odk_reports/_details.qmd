@@ -92,7 +92,9 @@ This section summarizes the forms and entities currently available in the projec
 #| label: tbl-forms
 #| tbl-cap: "List of forms"
 
-params$form_list |>
+form_df <- as.data.frame(params$form_list)
+
+form_df |>
   dplyr::select(xml_form_id,
                 name,
                 state,
@@ -105,7 +107,9 @@ params$form_list |>
 #| label: tbl-entities
 #| tbl-cap: "List of entities."
 
-params$entity_list() |>
+entity_df <- as.data.frame(params$entity_list)
+
+entity_df |>
   dplyr::select(-created_at,
                 -project_id) |> 
   gt::gt()
