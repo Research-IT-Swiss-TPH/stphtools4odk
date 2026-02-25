@@ -94,13 +94,15 @@ This section summarizes the forms and entities currently available in the projec
 
 form_df <- as.data.frame(params$form_list)
 
-form_df |>
+if (nrow(form_df) > 0) {
+  form_df |>
   dplyr::select(xml_form_id,
                 name,
                 state,
                 version,
                 submissions) |> 
   gt::gt()
+}
 ```
 
 ```{r}
@@ -109,10 +111,12 @@ form_df |>
 
 entity_df <- as.data.frame(params$entity_list)
 
-entity_df |>
-  dplyr::select(-created_at,
-                -project_id) |> 
-  gt::gt()
+if (nrow(entity_df) > 0) {
+  entity_df |>
+    dplyr::select(-created_at,
+                  -project_id) |> 
+    gt::gt()
+}
 ```
 
 ## Access
@@ -142,9 +146,6 @@ security_url <- "https://docs.getodk.org/security/"
 Security information has been directly updated from [`r security_url`](`r security_url`) on **{{< meta date >}}**. Since the servers are self-hosted, items marked with a question mark depend on the specific self-hosted configuration.
 
 ```{r}
-#| tbl-cap: "ODK security considerations"
-#| label: tbl-odk-security
-
 rvest::read_html(security_url) |>
   rvest::html_element("div.table-wrapper.colwidths-given.docutils.container table") |> 
   rvest::html_table() |>
