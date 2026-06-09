@@ -16,7 +16,6 @@
 # -----------------------------------------------------------------------------
 # 1. Schema retrieval & cleaning
 # -----------------------------------------------------------------------------
-
 #' Fetch and clean an ODK form schema
 #'
 #' @param fid        Form ID string passed to ruODK::form_schema_ext().
@@ -24,19 +23,20 @@
 #'                   Default: "label_français_(fr)".
 #' @param choices_col Column name of the choices language to use.
 #'                   Default: "choices_français_(fr)".
-#' @param country_replacements Named character vector of regex pattern → replacement
+#' @param replacements Optional character vector of regex pattern → replacement
 #'                   applied to the `answers` column. Names are regex patterns,
-#'                   values are replacements.
+#'                   values are replacements. Default: NULL.
+#' @param extra_exclude_patterns Optional character vector of additional regex
+#'                   patterns to exclude rows by `ruodk_name`, concatenated
+#'                   with the built-in exclusions. Default: NULL.
 #'
 #' @return A tibble with columns: ruodk_name, lbl, answers, selectMultiple.
 odk_get_schema <- function(
     fid,
     label_col   = "label_français_(fr)",
     choices_col = "choices_français_(fr)",
-    country_replacements = c(
-      "Département de l'Ouémé \\[Bénin\\]"       = "Bénin",
-      "District sanitaire de l'Avé \\[Togo\\]"   = "Togo"
-    )
+    replacements = NULL,
+    extra_exclude_patterns = NULL
 ) {
   clean_text <- function(x) {
     x |>
@@ -54,21 +54,26 @@ odk_get_schema <- function(
       answers = stringr::str_remove_all(answers, '(?<=")\\s+')
     )
 
-  # apply country (or any other) string replacements to answers
-  for (pattern in names(country_replacements)) {
+  # apply string replacements to answers
+  for (pattern in names(replacements)) {
     schema <- dplyr::mutate(
       schema,
-      answers = stringr::str_replace(answers, pattern, country_replacements[[pattern]])
+      answers = stringr::str_replace(answers, pattern, replacements[[pattern]])
     )
   }
 
+  base_exclude <- c("generated_note_name_")
+  exclude_pattern <- paste(
+    c(base_exclude, extra_exclude_patterns),
+    collapse = "|"
+  )
+
   schema |>
     dplyr::filter(
-      !stringr::str_detect(ruodk_name, "generated_note_name|_oth$|^meta_|^system_|^odata_")
+      !stringr::str_detect(ruodk_name, exclude_pattern)
     ) |>
     dplyr::select(ruodk_name, lbl, answers, selectMultiple)
 }
-
 
 # -----------------------------------------------------------------------------
 # 2. Value mapping
