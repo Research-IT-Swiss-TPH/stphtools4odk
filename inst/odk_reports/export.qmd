@@ -1,0 +1,208 @@
+---
+title: "ODK Data Export Demo"
+author:
+  - name: Hélène Langet
+    email: helene.langet@swisstph.ch
+date: last-modified
+format:
+  typst: default
+      
+mainfont: Arial
+fontsize: 11pt
+      
+execute:
+  echo: false
+  warning: false
+---
+
+## Overview
+
+This document demonstrates the `odk_pipeline_utilities.R` workflow:
+
+1. **Fetch & clean** the form schema with `odk_get_schema()`
+2. **Build the export** data frame with `odk_build_export()`
+3. **Write outputs** with `odk_write_stata()` and `odk_write_codebook()`
+
+---
+
+## Setup
+
+```{r}
+#| label: setup
+
+library(tidyverse)
+library(labelled)
+library(ruODK)
+library(haven)
+library(codebookr)
+
+source("../../R/odk_pipeline_utilities.R")
+```
+
+Configure your `ruODK` connection once before running any pipeline step:
+
+```{r}
+#| label: ruodk-setup
+#| eval: false
+
+ruODK::ru_setup(
+  svc = Sys.getenv("ODKC_SVC"),
+  un  = Sys.getenv("ODKC_UN"),
+  pw  = Sys.getenv("ODKC_PW"),
+  tz = Sys.getenv("TZ"),
+  verbose = TRUE
+)
+```
+
+---
+
+## Step 1 — Fetch the form schema
+
+`odk_get_schema()` calls `ruODK::form_schema_ext()`, renames label/choice
+columns, cleans text, applies any answer replacements, and filters out
+system/generated fields.
+
+```{r}
+ruODK::form_schema_ext(fid = "ip_providers")
+```
+
+
+```{r}
+#| label: get-schema
+#| eval: false
+
+form_id <- "ip_facilities"  # change to your form ID
+
+# Single-language form: label_col and choices_col are auto-detected
+schema <- odk_get_schema(fid = form_id)
+
+# Multi-language form: specify the language explicitly
+# Optionally add answer replacements or extra field exclusions beyond the built-in ones (e.g. exclude all fields starting with "meta_")
+schema <- odk_get_schema(
+  fid                    = form_id,
+  label_col              = "label_english_(en)",
+  choices_col            = "choices_english_(en)",
+  replacements           = c("Old value" = "New value"),  # optional
+  extra_exclude_patterns = "^meta_"                       # optional
+)
+
+schema |> 
+  knitr::kable()
+```
+
+The returned tibble always has exactly four columns:
+
+| Column          | Description                                      |
+|-----------------|--------------------------------------------------|
+| `ruodk_name`    | Field name as stored in ODK Central              |
+| `lbl`           | Human-readable label (cleaned)                   |
+| `answers`       | Serialised choice map (parsed downstream)        |
+| `selectMultiple`| `TRUE` for select_multiple fields                |
+
+---
+
+## Step 2 — Fetch raw submissions
+
+```{r}
+#| label: get-submissions
+#| eval: false
+
+submissions <- ruODK::odata_submission_get(fid = "your_form_id")
+
+glimpse(submissions)
+```
+
+---
+
+## Step 3 — Build the export data frame
+
+`odk_build_export()` chains four sub-steps internally:
+
+- **4a** Keep only schema variables
+- **4b** Expand `select_multiple` columns into 0/1 dummy columns
+- **4c** Map coded values to labels
+- **4d** Attach variable labels (`labelled`)
+- **4e** Strip form-prefix from column names (skips duplicates)
+
+```{r}
+#| label: build-export
+#| eval: false
+
+export_df <- odk_build_export(
+  df     = submissions,
+  schema = schema,
+  id_col = "id"          # default; change if your key column differs
+)
+
+glimpse(export_df)
+```
+
+### Inspecting labels
+
+```{r}
+#| label: inspect-labels
+#| eval: false
+
+# Show variable labels for the first 10 columns
+labelled::var_label(export_df) |> head(10)
+```
+
+---
+
+## Step 4 — Write outputs
+
+### Stata `.dta`
+
+```{r}
+#| label: write-stata
+#| eval: false
+
+odk_write_stata(export_df, path = "stata/clean_data.dta")
+```
+
+### Codebook (Word)
+
+```{r}
+#| label: write-codebook
+#| eval: false
+
+odk_write_codebook(
+  df       = export_df,
+  path     = "stata/codebook.docx",
+  title    = "EMPOWER WP2 — Enquête prestataires de santé",
+  subtitle = "Données collectées avec ODK Collect et stockées sur ODK Central."
+)
+```
+
+---
+
+## Full pipeline (one block)
+
+For production use, the entire pipeline can be run in a single chunk:
+
+```{r}
+#| label: full-pipeline
+#| eval: false
+
+# 1. Schema
+schema <- odk_get_schema(
+  fid          = "your_form_id",
+  replacements = c(
+    "Département de l'Ouémé \\[Bénin\\]"     = "Bénin",
+    "District sanitaire de l'Avé \\[Togo\\]" = "Togo"
+  )
+)
+
+# 2. Submissions
+submissions <- ruODK::odata_submission_get(fid = "your_form_id")
+
+# 3. Export data frame
+export_df <- odk_build_export(submissions, schema)
+
+# 4. Outputs
+odk_write_stata(export_df,    "stata/clean_data.dta")
+odk_write_codebook(export_df, "stata/codebook.docx",
+                   title    = "My Form Codebook",
+                   subtitle = "Auto-generated via odk_pipeline_utilities.R")
+```
+

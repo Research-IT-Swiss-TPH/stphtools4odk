@@ -19,10 +19,14 @@
 #' Fetch and clean an ODK form schema
 #'
 #' @param fid        Form ID string passed to ruODK::form_schema_ext().
-#' @param label_col  Column name of the label language to use.
-#'                   Default: "label_français_(fr)".
-#' @param choices_col Column name of the choices language to use.
-#'                   Default: "choices_français_(fr)".
+#' @param label_col  Column name of the label to use. If NULL (default),
+#'                   the first column matching "^label" is used automatically.
+#'                   Override when the form has multiple languages
+#'                   (e.g. "label_english_(en)", "label_français_(fr)").
+#' @param choices_col Column name of the choices to use. If NULL (default),
+#'                   the first column matching "^choices" is used automatically.
+#'                   Override when the form has multiple languages
+#'                   (e.g. "choices_english_(en)", "choices_français_(fr)").
 #' @param replacements Optional character vector of regex pattern → replacement
 #'                   applied to the `answers` column. Names are regex patterns,
 #'                   values are replacements. Default: NULL.
@@ -33,8 +37,8 @@
 #' @return A tibble with columns: ruodk_name, lbl, answers, selectMultiple.
 odk_get_schema <- function(
     fid,
-    label_col   = "label_français_(fr)",
-    choices_col = "choices_français_(fr)",
+    label_col   = NULL,
+    choices_col = NULL,
     replacements = NULL,
     extra_exclude_patterns = NULL
 ) {
@@ -45,7 +49,18 @@ odk_get_schema <- function(
       stringr::str_squish()
   }
 
-  schema <- ruODK::form_schema_ext(fid = fid) |>
+  raw <- ruODK::form_schema_ext(fid = fid)
+
+  if (is.null(label_col)) {
+    label_col <- grep("^label", names(raw), value = TRUE)[1]
+    if (is.na(label_col)) stop("No 'label' column found in schema; specify `label_col` explicitly.")
+  }
+  if (is.null(choices_col)) {
+    choices_col <- grep("^choices", names(raw), value = TRUE)[1]
+    if (is.na(choices_col)) stop("No 'choices' column found in schema; specify `choices_col` explicitly.")
+  }
+
+  schema <- raw |>
     dplyr::rename(lbl = dplyr::all_of(label_col),
                   answers = dplyr::all_of(choices_col)) |>
     dplyr::mutate(
@@ -62,7 +77,7 @@ odk_get_schema <- function(
     )
   }
 
-  base_exclude <- c("generated_note_name_")
+  base_exclude <- c("^generated_note_name_")
   exclude_pattern <- paste(
     c(base_exclude, extra_exclude_patterns),
     collapse = "|"
@@ -234,7 +249,6 @@ odk_build_export <- function(df, schema, id_col = "id") {
       stringr::str_remove(.x, "^[^_]+_")
     ))
 }
-
 
 # -----------------------------------------------------------------------------
 # 5. Export helpers
