@@ -11,8 +11,9 @@ mainfont: Arial
 fontsize: 11pt
       
 execute:
-  echo: false
+  echo: true
   warning: false
+  error: true
 ---
 
 ## Overview
@@ -43,14 +44,13 @@ Configure your `ruODK` connection once before running any pipeline step:
 
 ```{r}
 #| label: ruodk-setup
-#| eval: false
 
 ruODK::ru_setup(
   svc = Sys.getenv("ODKC_SVC"),
   un  = Sys.getenv("ODKC_UN"),
   pw  = Sys.getenv("ODKC_PW"),
   tz = Sys.getenv("TZ"),
-  verbose = TRUE
+  verbose = FALSE
 )
 ```
 
@@ -68,7 +68,6 @@ system/generated fields.
 
 ```{r}
 #| label: get-schema-simple
-#| eval: false
 
 # Single-language form: label_col and choices_col are auto-detected
 schema <- odk_get_schema(fid = form_id)
@@ -77,7 +76,6 @@ schema <- odk_get_schema(fid = form_id)
 
 ```{r}
 #| label: get-schema-parametrised
-#| eval: false
 
 # Multi-language form: specify the language explicitly
 # Optionally add answer replacements or extra field exclusions beyond the built-in ones (e.g. exclude all fields starting with "meta_")
@@ -108,7 +106,6 @@ The returned tibble always has exactly four columns:
 
 ```{r}
 #| label: get-submissions
-#| eval: false
 
 submissions <- ruODK::odata_submission_get(fid = form_id)
 
@@ -189,7 +186,8 @@ For production use, the entire pipeline can be run in a single chunk:
 
 ```{r}
 #| label: full-pipeline
-#| eval: false
+
+form_id = "ip_facilities"  # change to your form ID
 
 # 1. Schema
 schema <- odk_get_schema(
