@@ -5,7 +5,7 @@ author:
     email: helene.langet@swisstph.ch
 date: last-modified
 format:
-  typst: default
+  html: default
       
 mainfont: Arial
 fontsize: 11pt
@@ -56,6 +56,10 @@ ruODK::ru_setup(
 
 ---
 
+```{r}
+form_id <- "ip_facilities"  # change to your form ID
+```
+
 ## Step 1 — Fetch the form schema
 
 `odk_get_schema()` calls `ruODK::form_schema_ext()`, renames label/choice
@@ -63,18 +67,17 @@ columns, cleans text, applies any answer replacements, and filters out
 system/generated fields.
 
 ```{r}
-ruODK::form_schema_ext(fid = "ip_providers")
+#| label: get-schema-simple
+#| eval: false
+
+# Single-language form: label_col and choices_col are auto-detected
+schema <- odk_get_schema(fid = form_id)
 ```
 
 
 ```{r}
-#| label: get-schema
+#| label: get-schema-parametrised
 #| eval: false
-
-form_id <- "ip_facilities"  # change to your form ID
-
-# Single-language form: label_col and choices_col are auto-detected
-schema <- odk_get_schema(fid = form_id)
 
 # Multi-language form: specify the language explicitly
 # Optionally add answer replacements or extra field exclusions beyond the built-in ones (e.g. exclude all fields starting with "meta_")
@@ -107,9 +110,10 @@ The returned tibble always has exactly four columns:
 #| label: get-submissions
 #| eval: false
 
-submissions <- ruODK::odata_submission_get(fid = "your_form_id")
+submissions <- ruODK::odata_submission_get(fid = form_id)
 
-glimpse(submissions)
+submissions |> 
+  knitr::kable()
 ```
 
 ---
@@ -134,7 +138,8 @@ export_df <- odk_build_export(
   id_col = "id"          # default; change if your key column differs
 )
 
-glimpse(export_df)
+export_df |> 
+  knitr::kable()
 ```
 
 ### Inspecting labels
@@ -144,7 +149,9 @@ glimpse(export_df)
 #| eval: false
 
 # Show variable labels for the first 10 columns
-labelled::var_label(export_df) |> head(10)
+labelled::var_label(export_df) |>
+  head(10) |> 
+  knitr::kable()
 ```
 
 ---
@@ -157,7 +164,7 @@ labelled::var_label(export_df) |> head(10)
 #| label: write-stata
 #| eval: false
 
-odk_write_stata(export_df, path = "stata/clean_data.dta")
+odk_write_stata(export_df, path = "clean_data.dta")
 ```
 
 ### Codebook (Word)
@@ -168,9 +175,9 @@ odk_write_stata(export_df, path = "stata/clean_data.dta")
 
 odk_write_codebook(
   df       = export_df,
-  path     = "stata/codebook.docx",
-  title    = "EMPOWER WP2 — Enquête prestataires de santé",
-  subtitle = "Données collectées avec ODK Collect et stockées sur ODK Central."
+  path     = "codebook.docx",
+  title    = "My study title",
+  subtitle = "Data collected with ODK and stored on ODK Central"
 )
 ```
 
@@ -186,23 +193,23 @@ For production use, the entire pipeline can be run in a single chunk:
 
 # 1. Schema
 schema <- odk_get_schema(
-  fid          = "your_form_id",
-  replacements = c(
-    "Département de l'Ouémé \\[Bénin\\]"     = "Bénin",
-    "District sanitaire de l'Avé \\[Togo\\]" = "Togo"
-  )
+  fid                    = form_id,
+  label_col              = "label_english_(en)",
+  choices_col            = "choices_english_(en)",
+  replacements           = c("Old value" = "New value"),  # optional
+  extra_exclude_patterns = "^meta_"                       # optional
 )
 
 # 2. Submissions
-submissions <- ruODK::odata_submission_get(fid = "your_form_id")
+submissions <- ruODK::odata_submission_get(fid = form_id)
 
 # 3. Export data frame
 export_df <- odk_build_export(submissions, schema)
 
 # 4. Outputs
-odk_write_stata(export_df,    "stata/clean_data.dta")
-odk_write_codebook(export_df, "stata/codebook.docx",
-                   title    = "My Form Codebook",
-                   subtitle = "Auto-generated via odk_pipeline_utilities.R")
+odk_write_stata(export_df,    "clean_data.dta")
+odk_write_codebook(export_df, "codebook.docx",
+                   title    = "My study title",
+                   subtitle = "Data collected with ODK and stored on ODK Central")
 ```
 
