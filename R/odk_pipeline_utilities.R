@@ -73,11 +73,11 @@ odk_get_schema <- function(
   for (pattern in names(replacements)) {
     schema <- dplyr::mutate(
       schema,
-      answers = stringr::str_replace(answers, pattern, replacements[[pattern]])
+      answers = stringr::str_replace_all(answers, pattern, replacements[[pattern]])
     )
   }
 
-  base_exclude <- c("^generated_note_name_")
+  base_exclude <- c("generated_note_name")
   exclude_pattern <- paste(
     c(base_exclude, extra_exclude_patterns),
     collapse = "|"
@@ -145,16 +145,36 @@ odk_expand_multi <- function(df, var, schema, id_col = "id") {
   id_sym     <- rlang::sym(id_col)
   prefix     <- paste0(var, "_")
 
-  all_values <- schema |>
+  raw_answers <- schema |>
     dplyr::filter(ruodk_name == var_sym) |>
-    dplyr::pull(answers) |>
-    (\(x) eval(parse(text = x)))() |>
-    purrr::pluck("values")
+    dplyr::pull(answers)
+
+  all_values <- tryCatch(
+    raw_answers |> (\(x) eval(parse(text = x)))() |> purrr::pluck("values"),
+    error = function(e) NULL
+  )
+
+  # Fall back to values observed in the data when schema choices are unavailable
+  if (is.null(all_values)) {
+    all_values <- df |>
+      dplyr::pull(!!var_sym) |>
+      stringr::str_split(" ") |>
+      unlist() |>
+      unique() |>
+      sort() |>
+      setdiff(c(NA_character_, ""))
+
+    if (length(all_values) == 0) return(NULL)
+
+    warning("odk_expand_multi: no choice list found in schema for '", var,
+            "' — deriving levels from data: ",
+            paste(all_values, collapse = ", "))
+  }
 
   if (!is.null(all_values)) {
     df |>
       dplyr::select(!!id_sym, !!var_sym) |>
-      tidyr::separate_rows(!!var_sym, sep = " ") |>
+      tidyr::separate_longer_delim(!!var_sym, delim = " ") |>
       dplyr::mutate(!!var_sym := factor(!!var_sym, levels = all_values)) |>
       dplyr::mutate(value = 1L) |>
       tidyr::pivot_wider(
@@ -172,6 +192,34 @@ odk_expand_multi <- function(df, var, schema, id_col = "id") {
   }
 }
 
+# --- 1e. Strip longest common token-prefix shared by ≥2 columns -----------
+strip_common_prefix <- function(nms) {
+  toks <- strsplit(nms, "_", fixed = TRUE)
+  n    <- length(nms)
+  maxk <- max(lengths(toks)) - 1L   # always leave ≥1 token as the "unique" part
+  assigned_k <- integer(n)          # 0 = no prefix stripped yet
+
+  if (maxk >= 1) {
+    for (k in maxk:1) {                       # longest prefixes first
+      eligible <- which(assigned_k == 0L & lengths(toks) > k)
+      if (length(eligible) < 2) next
+      keys <- vapply(toks[eligible], function(t)
+        paste(t[seq_len(k)], collapse = "_"), character(1))
+      shared <- names(table(keys))[table(keys) >= 2]
+      hit <- eligible[keys %in% shared]
+      assigned_k[hit] <- k                    # claim these at this k
+    }
+  }
+
+  stripped <- vapply(seq_len(n), function(i) {
+    k <- assigned_k[i]
+    if (k == 0L) nms[i] else paste(toks[[i]][-seq_len(k)], collapse = "_")
+  }, character(1))
+
+  # revert any stripped names that collide after stripping
+  dup <- stripped[duplicated(stripped) | duplicated(stripped, fromLast = TRUE)]
+  ifelse(stripped %in% dup & assigned_k > 0L, nms, stripped)
+}
 
 # -----------------------------------------------------------------------------
 # 4. Full export build
@@ -189,11 +237,11 @@ odk_expand_multi <- function(df, var, schema, id_col = "id") {
 #' @return A labelled tibble ready for export.
 odk_build_export <- function(df, schema, id_col = "id") {
 
-  # --- 4a. Keep only schema variables (+ id) --------------------------------
+  # --- 1a. Keep only schema variables (+ id) --------------------------------
   df <- df |>
     dplyr::select(dplyr::any_of(c(schema$ruodk_name, id_col)))
 
-  # --- 4b. Expand select_multiple columns ------------------------------------
+  # --- 1b. Expand select_multiple columns ------------------------------------
   multi_vars   <- schema |> dplyr::filter(selectMultiple) |> dplyr::pull(ruodk_name)
   expanded_list <- purrr::map(
     multi_vars,
@@ -213,7 +261,7 @@ odk_build_export <- function(df, schema, id_col = "id") {
     }
   }
 
-  # --- 4c. Map coded values to labels (skip dummy columns) ------------------
+  # --- 1c. Map coded values to labels (skip dummy columns) ------------------
   dummy_cols <- expanded_list |>
     purrr::map(~ dplyr::select(.x, -dplyr::all_of(id_col)) |> names()) |>
     unlist()
@@ -224,7 +272,7 @@ odk_build_export <- function(df, schema, id_col = "id") {
       ~ odk_map_col(.x, dplyr::cur_column(), schema)
     ))
 
-  # --- 4d. Build variable labels --------------------------------------------
+  # --- 1d. Build variable labels --------------------------------------------
   dummy_label_list <- purrr::map(multi_vars, function(var) {
     answer_pairs <- schema |>
       dplyr::filter(ruodk_name == var) |>
@@ -247,19 +295,21 @@ odk_build_export <- function(df, schema, id_col = "id") {
 
   labelled::var_label(export_df) <- c(regular_label_list, dummy_label_list)
 
-  # --- 4e. Strip form-prefix from column names (skip duplicates) ------------
-  new_names     <- stringr::str_remove(names(export_df), "^[^_]+_")
-  duplicated_new <- new_names[duplicated(new_names) | duplicated(new_names, fromLast = TRUE)]
-
   export_df <- export_df |>
     dplyr::select(where(~ !all(is.na(.))))  # drop fully-empty columns
 
-  export_df |>
-    dplyr::rename_with(~ ifelse(
-      .x %in% names(export_df)[new_names %in% duplicated_new],
-      .x,
-      stringr::str_remove(.x, "^[^_]+_")
-    ))
+  save_names <- names(export_df)
+  final_names <- strip_common_prefix(save_names)
+
+  name_map <- tibble::tibble(
+    ruodk_name = save_names,
+    final_name = final_names
+  )
+
+  new_export_df <- export_df |>
+    dplyr::rename_with(~ final_names)
+
+  list(df1 = new_export_df, df2 = export_df, name_map = name_map)
 }
 
 # -----------------------------------------------------------------------------
@@ -271,6 +321,36 @@ odk_build_export <- function(df, schema, id_col = "id") {
 #' @param df   Labelled data frame from odk_build_export().
 #' @param path Output file path.
 odk_write_stata <- function(df, path) {
+  STATA_MAX <- 32L
+
+  long_vars <- names(df)[nchar(names(df)) > STATA_MAX]
+  if (length(long_vars) > 0) {
+    # Keep last 29 chars (meaningful tail), dedup with suffix, hard cap at 32
+    safe <- make.unique(stringr::str_sub(names(df), -(STATA_MAX - 3L)), sep = "_")
+    safe <- substr(safe, 1L, STATA_MAX)
+
+    renamed <- names(df)[names(df) != safe]
+    if (length(renamed) > 0) {
+      warning(
+        "odk_write_stata: ", length(renamed), " variable name(s) exceed Stata's ",
+        STATA_MAX, "-character limit and were truncated.\n",
+        "  Original names are preserved in variable labels.\n",
+        "  Renamed: ", paste(head(renamed, 5), collapse = ", "),
+        if (length(renamed) > 5) paste0(", … (", length(renamed) - 5, " more)") else ""
+      )
+      # Append original name to label so it is not lost
+      for (v in renamed) {
+        idx     <- which(names(df) == v)
+        old_lbl <- labelled::var_label(df[[idx]])
+        labelled::var_label(df[[idx]]) <- paste0(
+          if (!is.null(old_lbl) && old_lbl != "") paste0(old_lbl, " ") else "",
+          "[", v, "]"
+        )
+      }
+    }
+    names(df) <- safe
+  }
+
   haven::write_dta(df, path)
   message("Stata file written: ", path)
 }
@@ -278,17 +358,58 @@ odk_write_stata <- function(df, path) {
 #' Write a codebook Word document
 #'
 #' @param df       Labelled data frame from odk_build_export().
+#' @param schema   Schema data frame with at least `name` and `answers`
+#'                 (choice list) columns. Variables with `NA` in `answers`
+#'                 are treated as non-categorical.
 #' @param path     Output .docx file path.
 #' @param title    Codebook title string.
 #' @param subtitle Codebook subtitle string.
 odk_write_codebook <- function(
     df,
+    schema,
     path,
     title    = "ODK Codebook",
-    subtitle = "Generated by odk_pipeline.R"
+    subtitle = "Data collected with ODK and stored on ODK Central. Codebook generated by the odk_pipeline_utilities.R function developped at Swiss TPH based on ruODK and codebookr R packages."
 ) {
+  # codebookr uses `n` internally for frequency counts; a column literally
+  # named `n` causes a size-mismatch error (cumsum hits the data column, not
+  # the count column). Append an underscore to avoid this happening.
+  if ("n" %in% names(df)) {
+    df <- dplyr::rename(df, n_ = n)
+    warning("Column 'n' renamed to 'n_' to avoid a codebookr internal conflict.")
+  }
 
-  cb <- codebookr::codebook(df, title = title, subtitle = subtitle)
-  print(cb, path)
+  # Non-categorical variables are those with no defined answer/choice list
+  # in the schema (e.g. text, integer, decimal, date fields), as opposed to
+  # select_one / select_multiple variables which have entries in `answers`.
+  noncat_ruodk <- schema$ruodk_name[schema$answers == "NA"]
+  print(noncat_ruodk)
+
+  # # Translate ruodk_name -> the (possibly prefix-stripped) column name
+  # # actually used in df, via the mapping odk_build_export() attaches.
+  # name_map <- attr(df, "ruodk_name_map")
+  # if (is.null(name_map)) {
+  #   warning(
+  #     "df has no 'ruodk_name_map' attribute (was it built by odk_build_export()?); ",
+  #     "falling back to matching schema$ruodk_name directly against names(df)."
+  #   )
+  #   noncatvar <- noncat_ruodk
+  # } else {
+  #   noncatvar <- name_map$final_name[match(noncat_ruodk, name_map$ruodk_name)]
+  #   noncatvar <- noncatvar[!is.na(noncatvar)]
+  # }
+  #
+  # # Keep only variables that are actually present in df (e.g. dropped as
+  # # fully-empty columns, or renamed by the `n` -> `n_` fix above).
+  # noncatvar <- intersect(noncatvar, names(df))
+  noncatvar <- noncat_ruodk
+
+  cb <- codebookr::codebook(
+    df,
+    title            = title,
+    subtitle         = subtitle,
+    no_summary_stats = noncatvar
+  )
+  print(cb, target = path)
   message("Codebook written: ", path)
 }
