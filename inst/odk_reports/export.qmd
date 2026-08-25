@@ -1,14 +1,15 @@
 ---
 title: "ODK Data Export Demo"
 author:
-  - name: Hélène Langet
+  - name:
+      given: Hélène
+      family: Langet
+    affiliations:
+      - Research Informatics
     email: helene.langet@swisstph.ch
 date: last-modified
 format:
   html: default
-      
-mainfont: Arial
-fontsize: 11pt
       
 execute:
   echo: true
@@ -46,10 +47,10 @@ Configure your `ruODK` connection once before running any pipeline step:
 #| label: ruodk-setup
 
 ruODK::ru_setup(
-  svc = Sys.getenv("ODKC_SVC"),
-  un  = Sys.getenv("ODKC_UN"),
-  pw  = Sys.getenv("ODKC_PW"),
-  tz = Sys.getenv("TZ"),
+  svc = Sys.getenv("ODKC_TEST_SVC"),
+  un  = Sys.getenv("ODKC_TEST_UN"),
+  pw  = Sys.getenv("ODKC_TEST_PW"),
+  tz = Sys.getenv("TEST_TZ"),
   verbose = FALSE
 )
 ```
@@ -57,7 +58,7 @@ ruODK::ru_setup(
 ---
 
 ```{r}
-form_id <- "ip_facilities"  # change to your form ID
+form_id <- "va_who_2022"  # change to your form ID
 ```
 
 ## Step 1 — Fetch the form schema
@@ -73,6 +74,14 @@ system/generated fields.
 schema <- odk_get_schema(fid = form_id)
 ```
 
+The tibble returned by `odk_get_schema` always has exactly four columns:
+
+| Column          | Description                                      |
+|-----------------|--------------------------------------------------|
+| `ruodk_name`    | Field name as stored in ODK Central              |
+| `lbl`           | Human-readable label (cleaned)                   |
+| `answers`       | Serialised choice map (parsed downstream)        |
+| `selectMultiple`| `TRUE` for select_multiple fields                |
 
 ```{r}
 #| label: get-schema-parametrised
@@ -91,14 +100,7 @@ schema |>
   knitr::kable()
 ```
 
-The returned tibble always has exactly four columns:
 
-| Column          | Description                                      |
-|-----------------|--------------------------------------------------|
-| `ruodk_name`    | Field name as stored in ODK Central              |
-| `lbl`           | Human-readable label (cleaned)                   |
-| `answers`       | Serialised choice map (parsed downstream)        |
-| `selectMultiple`| `TRUE` for select_multiple fields                |
 
 ---
 
@@ -108,9 +110,7 @@ The returned tibble always has exactly four columns:
 #| label: get-submissions
 
 submissions <- ruODK::odata_submission_get(fid = form_id)
-
-submissions |> 
-  knitr::kable()
+submissions
 ```
 
 ---
@@ -127,23 +127,19 @@ submissions |>
 
 ```{r}
 #| label: build-export
-#| eval: false
 
-export_df <- odk_build_export(
+out <- odk_build_export(
   df     = submissions,
   schema = schema,
   id_col = "id"          # default; change if your key column differs
 )
-
-export_df |> 
-  knitr::kable()
+export_df <- out$df1
 ```
 
 ### Inspecting labels
 
 ```{r}
 #| label: inspect-labels
-#| eval: false
 
 # Show variable labels for the first 10 columns
 labelled::var_label(export_df) |>
@@ -159,7 +155,6 @@ labelled::var_label(export_df) |>
 
 ```{r}
 #| label: write-stata
-#| eval: false
 
 odk_write_stata(export_df, path = "clean_data.dta")
 ```
@@ -168,13 +163,14 @@ odk_write_stata(export_df, path = "clean_data.dta")
 
 ```{r}
 #| label: write-codebook
-#| eval: false
+
+form_title = "2022 WHO Verbal Autopsy instrument V1.1"
 
 odk_write_codebook(
-  df       = export_df,
+  df       = out$df2,
+  schema   = schema,
   path     = "codebook.docx",
-  title    = "My study title",
-  subtitle = "Data collected with ODK and stored on ODK Central"
+  title    = form_title
 )
 ```
 
@@ -187,7 +183,8 @@ For production use, the entire pipeline can be run in a single chunk:
 ```{r}
 #| label: full-pipeline
 
-form_id = "ip_facilities"  # change to your form ID
+form_id = "va_who_2022"  # change to your form ID
+form_title = "2022 WHO Verbal Autopsy instrument V1.1"
 
 # 1. Schema
 schema <- odk_get_schema(
@@ -207,7 +204,5 @@ export_df <- odk_build_export(submissions, schema)
 # 4. Outputs
 odk_write_stata(export_df,    "clean_data.dta")
 odk_write_codebook(export_df, "codebook.docx",
-                   title    = "My study title",
-                   subtitle = "Data collected with ODK and stored on ODK Central")
+                   title    = form_title)
 ```
-
